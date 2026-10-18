@@ -64,14 +64,14 @@ input[type=text],input[type=number],select{border:1px solid var(--line);border-r
 </style>
 </head>
 <body>
-<div id="gate" class="gate" style="display:none">
+<div id="gate" class="gate">
   <h2 style="margin:0;color:var(--brand)">🔒 داشبورد UGC</h2>
   <p style="color:var(--mut);font-size:13px">للموظف المختص بالمبلغ المقطوع</p>
   <input id="pin" type="password" placeholder="الرقم السري" maxlength="12">
   <button id="unlock">دخول</button>
 </div>
 
-<div id="app" style="display:block">
+<div id="app" style="display:none">
 <header>
   <h1>داشبورد المسوّقين بالمبلغ المقطوع</h1>
   <div class="sub">UGC — تحليل المحتوى والأسعار والأكواد • محاسن</div>
@@ -311,9 +311,10 @@ $("clearf").onclick=function(){state={cats:[],flags:[],q:"",pmin:null,pmax:null,
 $("export").onclick=exportCSV;
 
 function start(){loadLocal();stats();render();pullSheet();}
-$("unlock").onclick=function(){if($("pin").value===ADMIN_PIN){$("gate").style.display="none";$("app").style.display="block";start();}else alert("رقم سري غير صحيح");};
+function openApp(){$("gate").style.display="none";$("app").style.display="block";start();}
+$("unlock").onclick=function(){if($("pin").value===ADMIN_PIN){try{localStorage.setItem("ugc_auth",ADMIN_PIN);}catch(e){}openApp();}else alert("رقم سري غير صحيح");};
+try{if(localStorage.getItem("ugc_auth")===ADMIN_PIN){openApp();}}catch(e){}
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")$("unlock").click();});
-start();
 </script>
 </body>
 </html>
