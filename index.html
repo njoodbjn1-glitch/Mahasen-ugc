@@ -62,7 +62,8 @@ input[type=text],input[type=number],select{border:1px solid var(--line);border-r
 .msg .mt{display:block;font-size:10px;color:var(--mut);margin-top:3px}
 .msg.note{float:none;max-width:none;text-align:center;background:transparent;color:#9aa0b0;font-size:11px}
 .msg.hl{outline:2px solid #ffd27a}
-.gate{max-width:360px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
+.gate{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gate .gatebox{max-width:360px;width:90%;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center;box-shadow:0 8px 30px rgba(20,30,50,.08)}
 .gate input{width:100%;margin:12px 0;text-align:center;font-size:18px;letter-spacing:4px}
 .gate button{width:100%;background:var(--brand);color:#fff;border:none;border-radius:10px;padding:11px;font-size:15px;cursor:pointer}
 .synced{font-size:11px;color:var(--ok)}
@@ -72,13 +73,15 @@ input[type=text],input[type=number],select{border:1px solid var(--line);border-r
 </head>
 <body>
 <div id="gate" class="gate">
-  <h2 style="margin:0;color:var(--brand)">🔒 داشبورد UGC</h2>
-  <p style="color:var(--mut);font-size:13px">للموظف المختص بالمبلغ المقطوع</p>
-  <input id="pin" type="password" placeholder="الرقم السري" maxlength="12">
-  <button id="unlock">دخول</button>
+  <div class="gatebox">
+    <h2 style="margin:0;color:var(--brand)">🔒 داشبورد UGC</h2>
+    <p style="color:var(--mut);font-size:13px">للموظف المختص بالمبلغ المقطوع</p>
+    <input id="pin" type="password" placeholder="الرقم السري" maxlength="20">
+    <button id="unlock">دخول</button>
+  </div>
 </div>
 
-<div id="app" style="display:block">
+<div id="app" style="display:none">
 <header>
   <h1>داشبورد المسوّقين بالمبلغ المقطوع</h1>
   <div class="sub">UGC — تحليل المحتوى والأسعار والأكواد • محاسن</div>
@@ -367,7 +370,9 @@ $("clearf").onclick=function(){state={cats:[],flags:[],q:"",pmin:null,pmax:null,
 $("export").onclick=exportCSV;
 
 function start(){loadLocal();stats();render();pullSheet();}
-$("unlock").onclick=function(){if($("pin").value===ADMIN_PIN){$("gate").style.display="none";$("app").style.display="block";start();}else alert("رقم سري غير صحيح");};
+function openApp(){$("gate").style.display="none";$("app").style.display="block";start();}
+$("unlock").onclick=function(){if($("pin").value===ADMIN_PIN){try{localStorage.setItem("ugc_auth",ADMIN_PIN);}catch(e){}openApp();}else alert("رقم سري غير صحيح");};
+try{if(localStorage.getItem("ugc_auth")===ADMIN_PIN){openApp();}}catch(e){}
 $("pin").addEventListener("keydown",function(e){if(e.key==="Enter")$("unlock").click();});
 </script>
 </body>
