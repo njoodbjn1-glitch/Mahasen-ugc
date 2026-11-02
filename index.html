@@ -164,6 +164,12 @@ function recDates(r){
 }
 function inPeriod(d,y,m){ if(!d)return false; var p=d.split("-"); if(y&&p[0]!==y)return false; if(m&&p[1]!==m)return false; return true; }
 function recInPeriod(r,y,m){ if(!y&&!m)return true; var ds=recDates(r); for(var i=0;i<ds.length;i++){ if(inPeriod(ds[i],y,m))return true; } return false; }
+function phInPeriod(r){var y=state.year,m=state.month;var H=r.price_history||[];if(!y&&!m)return H;return H.filter(function(x){return inPeriod(x.t,y,m);});}
+function bundlesInPeriod(r){var y=state.year,m=state.month;var B=r.bundles||[];if(!y&&!m)return B;return B.filter(function(x){return inPeriod(x.t,y,m);});}
+function periodPrice(r){ // last single-video offer within selected period
+  var H=phInPeriod(r);var s=H.filter(function(x){return x.qty===1;});
+  return s.length?s[s.length-1].amount:null;
+}
 
 function stats(){
   var n=DATA.length;
@@ -214,17 +220,20 @@ function card(r,idx){
   var codeb=r.has_prior_code?('<span class="b code">كود: '+esc(r.code||"نعم")+'</span>'):'<span class="b nocode">بدون كود</span>';
   var awb=r.awaiting_transfer?'<span class="b await">⏳ بانتظار التحويل</span>':"";
   var multi=(r.target_labels||[]).length>1?'<span class="b" style="background:#fff7e6;color:#9a6b00">مشترك '+r.target_labels.length+' تصنيفات</span>':"";
-  var price=effPrice(r);
-  var bundstr=(r.bundles&&r.bundles.length)?('<div class="meta">📦 باقات: '+r.bundles.map(function(b){return (b.qty===2?"مقطعين":b.qty+" مقاطع")+" بـ"+b.amount+" ر";}).join("، ")+'</div>'):"";
-  var offers=r.offers&&r.offers.length?("عروض: "+r.offers.join(", ")+" ر"):"";
-  var transf=r.transfers&&r.transfers.length?(" • حوالات: "+r.transfers.join(", ")+" ر"):"";
-  var claim=r.client_claims&&r.client_claims.length?(' • <span style="color:#b5366b">ذكرت العميلة: '+r.client_claims.join(", ")+" ر</span>"):"";
+  var perActive=(state.year||state.month);
+  var price=perActive?periodPrice(r):effPrice(r);
+  var bund=bundlesInPeriod(r);
+  var bundstr=(bund&&bund.length)?('<div class="meta">📦 باقات: '+bund.map(function(b){return (b.qty===2?"مقطعين":b.qty+" مقاطع")+" بـ"+b.amount+" ر";}).join("، ")+'</div>'):"";
+  var offersArr=perActive?phInPeriod(r).filter(function(x){return x.qty===1;}).map(function(x){return x.amount;}):(r.offers||[]);
+  var offers=offersArr.length?("عروض المقطع: "+offersArr.join(", ")+" ر"):"";
+  var transf=(!perActive&&r.transfers&&r.transfers.length)?(" • حوالات: "+r.transfers.join(", ")+" ر"):"";
+  var claim=(!perActive&&r.client_claims&&r.client_claims.length)?(' • <span style="color:#b5366b">ذكرت العميلة: '+r.client_claims.join(", ")+" ر</span>"):"";
   var iban=r.info&&r.info.iban?('<div class="meta">IBAN: <span style="direction:ltr">'+esc(r.info.iban)+'</span></div>'):"";
   var wa=r.phone?('<a class="btn wa" href="https://wa.me/'+digits(r.phone)+'" target="_blank">واتساب 💬</a>'):"";
   var h='<div class="card" id="c'+idx+'">';
   h+='<div class="chead"><div><div class="nm">'+esc(r.name||r.phone)+'</div><div class="ph">'+esc(r.phone)+'</div></div>';
   var rev=r.price_review?' <span class="b" style="background:#fff0f0;color:#b5366b">⚠ راجع السجل</span>':"";
-  var conf=r.agreed?('<div class="auto">'+(edits[digits(r.phone)]&&edits[digits(r.phone)].price?"معدّل يدوي":("تلقائي • "+(r.price_conf||"")))+'</div>'):"";
+  var conf=price?('<div class="auto">'+(perActive?("سعر "+(state.month?state.month+"/":"")+(state.year||"")):(edits[digits(r.phone)]&&edits[digits(r.phone)].price?"معدّل يدوي":("تلقائي • "+(r.price_conf||""))))+'</div>'):"";
   h+='<div style="text-align:left"><div class="nm" style="color:var(--brand)">'+(price?price+" ر.س <span class=\"auto\">/ للمقطع</span>":'<span style="color:#b9770a">— غير محدد</span>')+'</div>'+conf+'</div></div>';
   h+='<div class="badges">'+cats+" "+codeb+" "+awb+" "+multi+rev+'</div>';
   h+='<div class="badges">'+labs+child+'</div>';
@@ -235,10 +244,10 @@ function card(r,idx){
   h+='<div class="pricebox"><label>السعر المتفق:</label><input type="number" value="'+(price!=null?price:"")+'" data-ph="'+esc(r.phone)+'" class="pin-price" placeholder="—">';
   h+='<input type="text" class="note pin-note" data-ph="'+esc(r.phone)+'" value="'+esc(effNote(r))+'" placeholder="ملاحظة (نوع الاتفاق/التحديث)"><button class="btn save-one" data-ph="'+esc(r.phone)+'">حفظ</button></div>';
   // actions
-  h+='<div class="actions">'+wa+'<button class="btn" onclick="toggle(\'ph'+idx+'\')">سجل الأسعار ('+((r.price_history||[]).length)+')</button><button class="btn" onclick="toggle(\'ev'+idx+'\')">الأدلة من الشات</button><button class="btn" onclick="toggle(\'ct'+idx+'\')">قائمة المحتوى ('+((state.year||state.month)?((r.content||[]).filter(function(x){return inPeriod(x.t,state.year,state.month);}).length):(r.content?r.content.length:0))+')</button></div>';
+  h+='<div class="actions">'+wa+'<button class="btn" onclick="toggle(\'ph'+idx+'\')">سجل الأسعار ('+(phInPeriod(r).length)+')</button><button class="btn" onclick="toggle(\'ev'+idx+'\')">الأدلة من الشات</button><button class="btn" onclick="toggle(\'ct'+idx+'\')">قائمة المحتوى ('+((state.year||state.month)?((r.content||[]).filter(function(x){return inPeriod(x.t,state.year,state.month);}).length):(r.content?r.content.length:0))+')</button></div>';
   // price history
   var ph="";
-  (r.price_history||[]).forEach(function(x){
+  phInPeriod(r).forEach(function(x){
     var lab=x.qty>1?(x.qty===2?"مقطعين":x.qty+" مقاطع"):"مقطع واحد";
     var col=x.qty>1?"#b5366b":"var(--brand)";
     ph+='<div class="content-item"><b style="color:'+col+'">'+lab+': '+x.amount+' ر</b><span class="auto">'+esc(x.t)+'</span><span style="flex:1"></span><span class="auto">«'+esc(x.snip.slice(0,52))+'»</span></div>';
